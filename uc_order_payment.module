@@ -101,3 +101,14 @@ function uc_order_payment_credit_terminal_form($form_state, $order) {
   $form['#submit'][] = 'uc_credit_terminal_form_submit';
   return $form;
 }
+
+function uc_order_payment_form_alter(&$form, $form_state, $form_id) {
+  switch ($form_id) {
+    case 'uc_order_payment_credit_terminal_form':
+        $order = uc_order_load($form['order_id']['#value']);
+        $order_id = $order->order_id;
+        $uid = $order->uid;
+        $form['#redirect'] = 'user/' . $uid . '/order/' . $order_id;
+      break;
+  }
+}
