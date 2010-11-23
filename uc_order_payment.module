@@ -1,0 +1,103 @@
+<?php
+
+require_once('sites/all/modules/ubercart/payment/uc_credit/uc_credit.admin.inc');
+
+// Hook Order Pane 
+function uc_order_payment_order_pane() {
+  $panes[] = array(
+    'id' => 'pay_invoice',
+		'callback' => 'uc_order_payment_make_payment',
+		'title' => t('Payment'),
+		'desc' => t("Make a payment on this invoice."),
+		'class' => 'abs-left order_payment',
+		'weight' => 4,
+		'show' => array('customer'),
+    );    
+  return $panes;
+}
+
+
+function uc_order_payment_make_payment($op, $arg1) {
+  $output = "";
+  $order = uc_order_load($arg1->order_id);
+  $balance = uc_payment_balance($order);
+    switch ($op) {
+  		case 'customer':
+
+        if ($balance > 0) {
+          $context = array(
+            'revision' => 'formatted-original',
+            'type' => 'order_total',
+            'subject' => array(
+              'order' => $order,
+            ),
+          );
+          
+          $form = drupal_get_form('uc_order_payment_credit_terminal_form', $order);
+          $output .= $form;
+
+  			
+  			} else {
+      	  $output .= "<div class='paid'><p>Your invoice has been fully paid. Thank you!</p></div>";
+      	}
+  			break;
+  	}
+	
+  return $output;
+}
+
+// Displays the credit card terminal form for customers.
+function uc_order_payment_credit_terminal_form($form_state, $order) {
+  // Get the transaction types available to our default gateway.
+  $types = uc_credit_gateway_txn_types(uc_credit_default_gateway());
+
+  // Put the order ID in the form.
+  $form['order_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $order->order_id,
+  );
+
+  $balance = uc_payment_balance($order);
+
+  $context = array(
+    'revision' => 'formatted-original',
+    'type' => 'amount',
+  );
+  $options = array(
+    'sign' => FALSE,
+    'thou' => FALSE,
+    'dec' => '.',
+  );
+
+  // Let the administrator set the amount to charge.
+  $form['amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Your Balance'),
+    '#default_value' => $balance > 0 ? uc_price($balance, $context, $options) : 0,
+    '#size' => 10,
+    '#attributes' => array('readonly' => "readonly"),
+    '#field_prefix' => '$'
+  );
+
+  // Build a credit card form.
+  $form['specify_card'] = array();
+  $form['specify_card']['cc_data'] = array(
+    '#theme' => 'uc_payment_method_credit_form',
+    '#tree' => TRUE,
+  );
+  
+  $form['specify_card']['cc_data'] += uc_payment_method_credit_form(array(), $order);
+  unset($form['specify_card']['cc_data']['cc_policy']);
+
+  // If available, let the card be charged now.
+  if (in_array(UC_CREDIT_AUTH_CAPTURE, $types)) {
+    $form['specify_card']['charge_card'] = array(
+      '#type' => 'submit',
+      '#value' => t('Pay Amount'),
+    );
+  }
+
+  $form['#validate'][] = 'uc_credit_terminal_form_validate';
+  $form['#submit'][] = 'uc_credit_terminal_form_submit';
+  return $form;
+}

@@ -1,0 +1,9 @@
+; $Id: uc_order_payment.info ddagradi $
+name = Order Payment
+description = "Allows users to make payments on orders created for them by admins"
+
+dependencies[] = uc_order
+dependencies[] = uc_credit
+
+package = Ubercart - extra
+core = 6.x
