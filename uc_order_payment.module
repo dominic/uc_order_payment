@@ -110,5 +110,7 @@ function uc_order_payment_form_alter(&$form, $form_state, $form_id) {
         $uid = $order->uid;
         $form['#redirect'] = 'user/' . $uid . '/order/' . $order_id;
       break;
+    default:
+      break;
   }
 }
